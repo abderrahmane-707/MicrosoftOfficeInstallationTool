@@ -12,55 +12,8 @@ if errorlevel 1 (
 :: Go to script's directory
 cd /d "%~dp0"
 
-:: Define basic variables
-set "ON=(YES)"
-set "OFF=(NO)"
-set "MAX_PROGS=12"
-
-:: Set default programs values - ALL OFF by default
-call :DESELECT_ALL OPT %MAX_PROGS%
-
-:: Program names to use the generic SHOW_SELECTED function
-set "NAME1=Word" & set "NAME2=Excel" & set "NAME3=PowerPoint" & set "NAME4=Outlook"
-set "NAME5=OneNote" & set "NAME6=Publisher" & set "NAME7=Access" & set "NAME8=Visio"
-set "NAME9=Project" & set "NAME10=Proofing Tools" & set "NAME11=Teams" & set "NAME12=OneDrive"
-
-:: Determine processor architecture automatically
-if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
-    set "CPU=64"
-    set "ARCH_MSG=64-bit"
-) else if "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
-    set "CPU=64"
-    set "ARCH_MSG=64-bit (ARM64)"
-) else (
-    set "CPU=32"
-    set "ARCH_MSG=32-bit"
-)
-
-:: Additional check for 64-bit OS running 32-bit cmd
-if "%PROCESSOR_ARCHITEW6432%"=="AMD64" (
-    set "CPU=64"
-    set "ARCH_MSG=64-bit (Auto-detected from 64-bit OS)"
-)
-
-:: Check for offline files
-if exist "Files\Programs\Office\Data\stream*.dat" (
-    set "OFILES=%ON%"
-) else (
-    set "OFILES=%OFF%"
-)
-
-:: Set default Office version
-set "OPTV=2021"
-
-:: Installation Mode: %ON%=Online, %OFF%=Offline
-set "OPTM=%ON%"
-
-:: Language: ar-sa, en-us
-set "OPTL=en-us"
-
-:: Set configuration file path
-set "CONFIG_FILE=Files\Programs\configuration.xml"
+:: Initialize
+call :INIT
 
 :: Main interface
 :OFFICE_MENU
@@ -103,21 +56,21 @@ echo.
 echo              ---------------------------------------------------------------------------
 
 echo. & echo Selected programs for %ARCH_MSG%:
-call :SHOW_SELECTED OPT NAME %MAX_PROGS%
+call :SHOW_SELECTED
 
 echo. & echo Tip: you can select multiple items, e.g. 1,3,5 or 1-5 or 1-3,7,10-12
 
 set "choice=" & set /p "choice=--> Select an option(s) and press [S] to Start: "
 if "%choice%"=="" goto OFFICE_MENU
 if "%choice%"=="0" exit
-if /i "%choice%"=="V" call :TOGGLE_VERSION && goto OFFICE_MENU
-if /i "%choice%"=="L" call :TOGGLE_LANGUAGE && goto OFFICE_MENU
-if /i "%choice%"=="M" call :TOGGLE_SINGLE OPTM && goto OFFICE_MENU
-if /i "%choice%"=="A" (call :SELECT_ALL OPT %MAX_PROGS% & goto OFFICE_MENU)
-if /i "%choice%"=="D" (call :DESELECT_ALL OPT %MAX_PROGS% & goto OFFICE_MENU)
+if /i "%choice%"=="V" (call :TOGGLE_VERSION && goto OFFICE_MENU)
+if /i "%choice%"=="L" (call :TOGGLE_LANGUAGE && goto OFFICE_MENU)
+if /i "%choice%"=="M" (call :TOGGLE_SINGLE OPTM && goto OFFICE_MENU)
+if /i "%choice%"=="A" (call :SELECT_ALL & goto OFFICE_MENU)
+if /i "%choice%"=="D" (call :DESELECT_ALL & goto OFFICE_MENU)
 if /i "%choice%"=="S" goto CONTINUE
 
-call :MULTI_INPUT OPT %MAX_PROGS%
+call :MULTI_INPUT
 goto OFFICE_MENU
 
 :: Continue installation
@@ -130,12 +83,11 @@ for /l %%i in (1,1,12) do (
 
 if "!HASSELECTION!"=="%OFF%" (
     echo. & echo No programs was selected
-    pause
-    goto OFFICE_MENU
+    pause & goto OFFICE_MENU
 )
 
 echo. & echo Selected programs:
-call :SHOW_SELECTED OPT NAME %MAX_PROGS%
+call :SHOW_SELECTED
 
 echo.
 echo    Installation Architecture: %ARCH_MSG%
@@ -156,7 +108,7 @@ if "%OPTM%,%OFILES%"=="%ON%,%OFF%" goto ONLINE_INSTALL
 echo Downloading Office files
 call :CONFIG
 echo. & echo Downloading Microsoft Office %OPTV% %CPU%-bit
-"Files\Programs\setup.exe" /download "%CONFIG_FILE%"
+"setup.exe" /download "%CONFIG_FILE%"
 if errorlevel 1 (
     echo. & echo Download failed
     call :DEL_CONFIG
@@ -166,8 +118,8 @@ goto END
 
 :DELETE_FILES
 echo. & echo Deleting Microsoft Office Installation Files
-rd /s /q "Files\Programs\Office" >nul 2>&1
-if exist "Files\Programs\Office" (
+rd /s /q "Office" >nul 2>&1
+if exist "Office" (
     echo Could not delete offline files
 )
 
@@ -176,7 +128,7 @@ pause & goto OFFICE_MENU
 :OFFLINE_INSTALL
 echo. & echo Installing Microsoft Office from offline files
 call :CONFIG
-"Files\Programs\setup.exe" /configure "%CONFIG_FILE%"
+"setup.exe" /configure "%CONFIG_FILE%"
 if errorlevel 1 (
     echo. & echo Installation failed
     call :DEL_CONFIG
@@ -187,7 +139,7 @@ goto END
 :ONLINE_INSTALL
 call :CONFIG
 echo. & echo Installing Microsoft Office (Online)
-"Files\Programs\setup.exe" /configure "%CONFIG_FILE%"
+"setup.exe" /configure "%CONFIG_FILE%"
 if errorlevel 1 (
     echo. & echo Installation failed
     call :DEL_CONFIG
@@ -199,29 +151,97 @@ goto END
 call :DEL_CONFIG
 echo. & echo Disabling Microsoft Office Telemetry
 reg add "HKLM\SOFTWARE\Microsoft\Office\Common\ClientTelemetry" /v "DisableTelemetry" /t REG_DWORD /d "00000001" /f >nul 2>&1
+
+call :CHOICE "Do you want to activate Microsoft Office using (MAS)?"
+if errorlevel 2 goto OFFICE_MENU
+
+echo. & echo The script will open in a new window. Follow the on-screen instructions
+powershell -NoP -EP Bypass -c "irm https://get.activated.win | iex"
 call :GO & goto OFFICE_MENU
 
-:: %1 = OPT-prefix, %2 = NAME-prefix, %3 = max
+:INIT
+if not exist "setup.exe" (
+    echo Error: setup.exe not found
+    pause & exit /b 1
+)
+
+if exist "%CONFIG_FILE%" del /f /q "%CONFIG_FILE%" >nul 2>&1
+
+:: Define basic variables
+set "ON=(YES)"
+set "OFF=(NO)"
+
+:: Determine processor architecture automatically
+if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
+    set "CPU=64"
+    set "ARCH_MSG=64-bit"
+) else if "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
+    set "CPU=64"
+    set "ARCH_MSG=64-bit (ARM64)"
+) else (
+    set "CPU=32"
+    set "ARCH_MSG=32-bit"
+)
+
+:: Additional check for 64-bit OS running 32-bit cmd
+if "%PROCESSOR_ARCHITEW6432%"=="AMD64" (
+    set "CPU=64"
+    set "ARCH_MSG=64-bit (Auto-detected from 64-bit OS)"
+)
+
+:: Check for offline files
+if exist "Office\Data\stream*.dat" (
+    set "OFILES=%ON%"
+) else (
+    set "OFILES=%OFF%"
+)
+
+:: Set default Office version
+set "OPTV=2021"
+
+:: Installation Mode: %ON%=Online, %OFF%=Offline
+set "OPTM=%ON%"
+
+:: Language: ar-sa, en-us
+set "OPTL=en-us"
+
+:: Set configuration file path
+set "CONFIG_FILE=configuration.xml"
+
+set "MAX_PROGS=12"
+
+set "NAME1=Word"
+set "NAME2=Excel"
+set "NAME3=PowerPoint"
+set "NAME4=Outlook"
+set "NAME5=OneNote"
+set "NAME6=Publisher"
+set "NAME7=Access"
+set "NAME8=Visio"
+set "NAME9=Project"
+set "NAME10=Proofing Tools"
+set "NAME11=Teams"
+set "NAME12=OneDrive"
+
+:: Set default programs values - ALL OFF by default
+call :DESELECT_ALL
+goto :eof
+
+:: Shows the currently selected programs (OPT1..OPT12 / NAME1..NAME12, hardcoded to this script)
 :SHOW_SELECTED
 set "ANY=0"
-for /L %%i in (1,1,%~3) do (
-    set "cur=!%~1%%i!"
-    set "lbl=!%~2%%i!"
+for /L %%i in (1,1,%MAX_PROGS%) do (
+    set "cur=!OPT%%i!"
+    set "lbl=!NAME%%i!"
     if "!cur!"=="%ON%" (
         echo    - !lbl!
         set "ANY=1"
     )
 )
 if "!ANY!"=="0" echo    - No selection
-exit /b
-
+goto :eof
 
 :MULTI_INPUT
-:: %1 = Option Prefix (e.g., OPT or BOPT)
-:: %2 = Max Limit (e.g., %PROGS_COUNT% or %BUCKET_COUNT%)
-
-set "prefix=%~1"
-set "maxLimit=%~2"
 set "invalid="
 set "tokens=%choice:,= %"
 
@@ -240,16 +260,16 @@ for %%G in (%tokens%) do (
         set "isNum2=1" & for /f "delims=0123456789" %%C in ("!rangeEnd!") do set "isNum2=0"
 
         if defined rangeStart if defined rangeEnd if "!isNum1!!isNum2!"=="11" (
-            if !rangeStart! geq 1 if !rangeEnd! leq !maxLimit! if !rangeStart! leq !rangeEnd! (
-                for /L %%N in (!rangeStart!,1,!rangeEnd!) do call :TOGGLE_SINGLE !prefix!%%N
+            if !rangeStart! geq 1 if !rangeEnd! leq %MAX_PROGS% if !rangeStart! leq !rangeEnd! (
+                for /L %%N in (!rangeStart!,1,!rangeEnd!) do call :TOGGLE_SINGLE OPT%%N
                 set "matched=1"
             )
         )
     ) else (
         set "isNum=1" & for /f "delims=0123456789" %%C in ("!tok!") do set "isNum=0"
         if "!isNum!"=="1" if defined tok (
-            if !tok! geq 1 if !tok! leq !maxLimit! (
-                call :TOGGLE_SINGLE !prefix!!tok!
+            if !tok! geq 1 if !tok! leq %MAX_PROGS% (
+                call :TOGGLE_SINGLE OPT!tok!
                 set "matched=1"
             )
         )
@@ -264,32 +284,29 @@ if defined invalid (
 )
 goto :eof
 
-:: %1 = value var prefix (e.g. OPT), %2 = value to toggle against
 :TOGGLE_SINGLE
 if "!%~1!"=="%ON%" (set "%~1=%OFF%") else (set "%~1=%ON%")
-exit /b
+goto :eof
 
 :IS_ON
 if "!%~1!"=="%ON%" exit /b 0
 exit /b 1
 
 :SELECT_ALL
-for /L %%i in (1,1,%~2) do set "%~1%%i=%ON%"
-exit /b
+for /L %%i in (1,1,%MAX_PROGS%) do set "OPT%%i=%ON%"
+goto :eof
 
 :DESELECT_ALL
-for /L %%i in (1,1,%~2) do set "%~1%%i=%OFF%"
-exit /b
-
-
+for /L %%i in (1,1,%MAX_PROGS%) do set "OPT%%i=%OFF%"
+goto :eof
 
 :TOGGLE_VERSION
 if "%OPTV%"=="365" (set "OPTV=2021") else if "%OPTV%"=="2021" (set "OPTV=2019") else if "%OPTV%"=="2019" (set "OPTV=2016") else (set "OPTV=365")
-exit /b
+goto :eof
 
 :TOGGLE_LANGUAGE
 if "%OPTL%"=="ar-sa" (set "OPTL=en-us") else (set "OPTL=ar-sa")
-exit /b
+goto :eof
 
 :CONFIG
 echo. & echo Creating Configuration File for Microsoft Office %OPTV%
@@ -413,9 +430,9 @@ echo ^</Configuration^> >> "%CONFIG_FILE%"
 
 if not exist "%CONFIG_FILE%" (
     echo Failed to create configuration file!
-    exit /b 1
+    exit
 )
-exit /b
+goto :eof
 
 :DEL_CONFIG
 del /f /q "%CONFIG_FILE%" >nul 2>&1
@@ -423,7 +440,7 @@ goto :eof
 
 :CHOICE
 choice /C YN /N /M "%~1 (Y/N): "
-exit /b
+goto :eof
 
 :GO
 echo. & echo The operation is done.
