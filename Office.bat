@@ -2,6 +2,16 @@
 setlocal enabledelayedexpansion
 mode con: cols=100 lines=30
 
+:: Go to script's directory
+cd /d "%~dp0"
+
+:: Check for ODT setup.exe
+if not exist "setup.exe" (
+    echo [ERROR] setup.exe is missing
+    echo Please download the Office Deployment Tool and place setup.exe script directory
+    pause & exit /b 1
+)
+
 :: Check for administrator privileges
 fltmc >nul 2>&1
 if errorlevel 1 (
@@ -9,11 +19,10 @@ if errorlevel 1 (
     pause & exit /b 1
 )
 
-:: Go to script's directory
-cd /d "%~dp0"
-
 :: Initialize
 call :INIT
+call :INIT_PROGRAMS
+call :DESELECT_ALL
 
 :: Main interface
 :OFFICE_MENU
@@ -22,7 +31,7 @@ echo.
 echo                                                 \\!//
 echo                                                 (o o)
 echo              -------------------------------oOOo-(_)-oOOo-------------------------------
-echo                                     Microsoft Office Installation Tool
+echo                                   Microsoft Office Installation Tool
 echo              ---------------------------------------------------------------------------
 echo.
 
@@ -42,30 +51,27 @@ if "%OPTM%,%OFILES%"=="%ON%,%ON%" set "MOD_MSG=Offline Installation"
 if "%OPTL%"=="ar-sa" set "LANG_MSG=ar-sa"
 if "%OPTL%"=="en-us" set "LANG_MSG=en-us"
 
-echo                   [1] Word                  [5] OneNote             [9] Project
-echo                   [2] Excel                 [6] Publisher           [10] Proofing Tools
-echo                   [3] PowerPoint            [7] Access              [11] Teams
-echo                   [4] Outlook               [8] Visio               [12] OneDrive
+call :RENDER_COLUMNS
+
 echo.
-echo    [V] Version:  %VERSION_MSG%
-echo    [L] Language: %LANG_MSG%
-echo    [M] Mode:     %MOD_MSG%
+echo    [V] Version:      %VERSION_MSG%
+echo    [L] Language:     %LANG_MSG%
+echo    [M] Mode:         %MOD_MSG%
+echo    [I] Architecture: %ARCH_MSG%
+echo.
+echo              ---------------------------------------------------------------------------
 echo.
 echo                   [A] Select All          [D] Deselect All             [0] Exit
 echo.
-echo              ---------------------------------------------------------------------------
 
-echo. & echo Selected programs for %ARCH_MSG%:
-call :SHOW_SELECTED
-
-echo. & echo Tip: you can select multiple items, e.g. 1,3,5 or 1-5 or 1-3,7,10-12
-
+echo Tip: you can select multiple items, e.g. 1,3,5 or 1-5 or 1-3,7,10-12
 set "choice=" & set /p "choice=--> Select an option(s) and press [S] to Start: "
+
 if "%choice%"=="" goto OFFICE_MENU
-if "%choice%"=="0" exit
+if "%choice%"=="0" exit /b
 if /i "%choice%"=="V" (call :TOGGLE_VERSION && goto OFFICE_MENU)
 if /i "%choice%"=="L" (call :TOGGLE_LANGUAGE && goto OFFICE_MENU)
-if /i "%choice%"=="M" (call :TOGGLE_SINGLE OPTM && goto OFFICE_MENU)
+if /i "%choice%"=="M" (call :TOGGLE_SINGLE & goto OFFICE_MENU)
 if /i "%choice%"=="A" (call :SELECT_ALL & goto OFFICE_MENU)
 if /i "%choice%"=="D" (call :DESELECT_ALL & goto OFFICE_MENU)
 if /i "%choice%"=="S" goto CONTINUE
@@ -76,18 +82,21 @@ goto OFFICE_MENU
 :: Continue installation
 :CONTINUE
 cls
-set "HASSELECTION=%OFF%"
-for /l %%i in (1,1,12) do (
-    call :IS_ON OPT%%i && set "HASSELECTION=%ON%"
+:: Collect every selected program into a single list, then check the selection in one go
+set "toInstall="
+for /L %%i in (1,1,%MAX_PROGS%) do (
+    if "!OPT%%i!"=="%ON%" (
+        for %%V in (ITEM%%i) do for /f "tokens=2 delims=|" %%B in ("!%%V!") do set "toInstall=!toInstall!;%%B"
+    )
 )
 
-if "!HASSELECTION!"=="%OFF%" (
-    echo. & echo No programs was selected
+if not defined toInstall (
+    echo No programs were selected
     pause & goto OFFICE_MENU
 )
 
-echo. & echo Selected programs:
-call :SHOW_SELECTED
+echo Installing the following programs:
+for %%P in (!toInstall!) do echo     - %%P
 
 echo.
 echo    Installation Architecture: %ARCH_MSG%
@@ -95,8 +104,8 @@ echo    Installation Version: %OPTV%
 echo    Language: %LANG_MSG%
 echo    Installation Mode: %MOD_MSG%
 
-call :CHOICE "Do you want to start?"
-if errorlevel 2 goto OFFICE_MENU
+echo. & call :CHOICE "Do you want to start?"
+if errorlevel 2 (call :DESELECT_ALL & goto OFFICE_MENU)
 
 :: Process based on installation mode and offline files status
 if "%OPTM%,%OFILES%"=="%OFF%,%OFF%" goto DOWNLOAD_FILES
@@ -112,7 +121,7 @@ echo. & echo Downloading Microsoft Office %OPTV% %CPU%-bit
 if errorlevel 1 (
     echo. & echo Download failed
     call :DEL_CONFIG
-    pause & goto OFFICE_MENU
+    pause & call :DESELECT_ALL & goto OFFICE_MENU
 )
 goto END
 
@@ -122,17 +131,16 @@ rd /s /q "Office" >nul 2>&1
 if exist "Office" (
     echo Could not delete offline files
 )
-
-pause & goto OFFICE_MENU
+pause & call :DESELECT_ALL & goto OFFICE_MENU
 
 :OFFLINE_INSTALL
-echo. & echo Installing Microsoft Office from offline files
+echo. & echo Installing Microsoft Office (offline)
 call :CONFIG
 "setup.exe" /configure "%CONFIG_FILE%"
 if errorlevel 1 (
     echo. & echo Installation failed
     call :DEL_CONFIG
-	pause & goto OFFICE_MENU
+	pause & call :DESELECT_ALL & goto OFFICE_MENU
 )
 goto END
 
@@ -143,7 +151,7 @@ echo. & echo Installing Microsoft Office (Online)
 if errorlevel 1 (
     echo. & echo Installation failed
     call :DEL_CONFIG
-    pause & goto OFFICE_MENU
+    pause & call :DESELECT_ALL & goto OFFICE_MENU
 )
 goto END
 
@@ -153,19 +161,14 @@ echo. & echo Disabling Microsoft Office Telemetry
 reg add "HKLM\SOFTWARE\Microsoft\Office\Common\ClientTelemetry" /v "DisableTelemetry" /t REG_DWORD /d "00000001" /f >nul 2>&1
 
 call :CHOICE "Do you want to activate Microsoft Office using (MAS)?"
-if errorlevel 2 goto OFFICE_MENU
+if errorlevel 2 goto (OFFICE_MENU & goto OFFICE_MENU)
 
 echo. & echo The script will open in a new window. Follow the on-screen instructions
 powershell -NoP -EP Bypass -c "irm https://get.activated.win | iex"
-call :GO & goto OFFICE_MENU
+call :GO & call :DESELECT_ALL & goto OFFICE_MENU
 
 :INIT
-if not exist "setup.exe" (
-    echo Error: setup.exe not found
-    pause & exit /b 1
-)
-
-if exist "%CONFIG_FILE%" del /f /q "%CONFIG_FILE%" >nul 2>&1
+call :DEL_CONFIG
 
 :: Define basic variables
 set "ON=(YES)"
@@ -208,42 +211,52 @@ set "OPTL=en-us"
 :: Set configuration file path
 set "CONFIG_FILE=configuration.xml"
 
-set "MAX_PROGS=12"
-
-set "NAME1=Word"
-set "NAME2=Excel"
-set "NAME3=PowerPoint"
-set "NAME4=Outlook"
-set "NAME5=OneNote"
-set "NAME6=Publisher"
-set "NAME7=Access"
-set "NAME8=Visio"
-set "NAME9=Project"
-set "NAME10=Proofing Tools"
-set "NAME11=Teams"
-set "NAME12=OneDrive"
-
-:: Set default programs values - ALL OFF by default
-call :DESELECT_ALL
 goto :eof
 
-:: Shows the currently selected programs (OPT1..OPT12 / NAME1..NAME12, hardcoded to this script)
-:SHOW_SELECTED
-set "ANY=0"
-for /L %%i in (1,1,%MAX_PROGS%) do (
-    set "cur=!OPT%%i!"
-    set "lbl=!NAME%%i!"
-    if "!cur!"=="%ON%" (
-        echo    - !lbl!
-        set "ANY=1"
+:INIT_PROGRAMS
+set "MAX_PROGS=12"
+
+set "ITEM1=Word|Word"
+set "ITEM2=Excel|Excel"
+set "ITEM3=PowerPoint|PowerPoint"
+set "ITEM4=Outlook|Outlook"
+set "ITEM5=OneNote|OneNote"
+set "ITEM6=Publisher|Publisher"
+set "ITEM7=Access|Access"
+set "ITEM8=Visio|Visio"
+set "ITEM9=Project|Project"
+set "ITEM10=ProofingTools|Proofing Tools"
+set "ITEM11=Teams|Teams"
+set "ITEM12=OneDrive|OneDrive"
+goto :eof
+
+:: Renders items in three columns, marking selected ones with *
+:RENDER_COLUMNS
+set /a "ROWS=(MAX_PROGS+2)/3"
+for /L %%r in (1,1,%ROWS%) do (
+    set "line="
+    for %%x in (1 2 3) do (
+        set /a "idx=%%r+ROWS*(%%x-1)"
+        set "cell=                         "
+        if !idx! leq !MAX_PROGS! (
+            for %%V in (ITEM!idx!) do for %%W in (OPT!idx!) do (
+                for /f "tokens=1,2 delims=|" %%A in ("!%%V!") do (
+                    set "cell=  [!idx!] %%B"
+                    if "!%%W!"=="!ON!" set "cell=* [!idx!] %%B"
+                )
+            )
+        )
+        set "cell=!cell!                          "
+        set "cell=!cell:~0,25!"
+        set "line=!line!!cell!"
     )
+    echo                  !line!
 )
-if "!ANY!"=="0" echo    - No selection
 goto :eof
 
 :MULTI_INPUT
 set "invalid="
-set "tokens=%choice:,= %"
+set "tokens=!choice:,= !"
 
 for %%G in (%tokens%) do (
     set "tok=%%G"
@@ -260,16 +273,22 @@ for %%G in (%tokens%) do (
         set "isNum2=1" & for /f "delims=0123456789" %%C in ("!rangeEnd!") do set "isNum2=0"
 
         if defined rangeStart if defined rangeEnd if "!isNum1!!isNum2!"=="11" (
-            if !rangeStart! geq 1 if !rangeEnd! leq %MAX_PROGS% if !rangeStart! leq !rangeEnd! (
-                for /L %%N in (!rangeStart!,1,!rangeEnd!) do call :TOGGLE_SINGLE OPT%%N
+            if !rangeStart! geq 1 if !rangeEnd! leq !MAX_PROGS! if !rangeStart! leq !rangeEnd! (
+                for /L %%N in (!rangeStart!,1,!rangeEnd!) do (
+                    for %%V in (OPT%%N) do (
+                        if "!%%V!"=="%ON%" (set "%%V=%OFF%") else (set "%%V=%ON%")
+                    )
+                )
                 set "matched=1"
             )
         )
     ) else (
         set "isNum=1" & for /f "delims=0123456789" %%C in ("!tok!") do set "isNum=0"
         if "!isNum!"=="1" if defined tok (
-            if !tok! geq 1 if !tok! leq %MAX_PROGS% (
-                call :TOGGLE_SINGLE OPT!tok!
+            if !tok! geq 1 if !tok! leq !MAX_PROGS! (
+                for %%V in (OPT!tok!) do (
+                    if "!%%V!"=="%ON%" (set "%%V=%OFF%") else (set "%%V=%ON%")
+                )
                 set "matched=1"
             )
         )
@@ -285,12 +304,8 @@ if defined invalid (
 goto :eof
 
 :TOGGLE_SINGLE
-if "!%~1!"=="%ON%" (set "%~1=%OFF%") else (set "%~1=%ON%")
+if "!OPTM!"=="%ON%" (set "OPTM=%OFF%") else (set "OPTM=%ON%")
 goto :eof
-
-:IS_ON
-if "!%~1!"=="%ON%" exit /b 0
-exit /b 1
 
 :SELECT_ALL
 for /L %%i in (1,1,%MAX_PROGS%) do set "OPT%%i=%ON%"
@@ -430,16 +445,16 @@ echo ^</Configuration^> >> "%CONFIG_FILE%"
 
 if not exist "%CONFIG_FILE%" (
     echo Failed to create configuration file!
-    exit
+    exit /b 1
 )
 goto :eof
 
 :DEL_CONFIG
-del /f /q "%CONFIG_FILE%" >nul 2>&1
+if exist "%CONFIG_FILE%" del /f /q "%CONFIG_FILE%" >nul 2>&1
 goto :eof
 
 :CHOICE
-choice /C YN /N /M "%~1 (Y/N): "
+choice /C YN /N /M "%~1 [Y/n]: "
 goto :eof
 
 :GO
