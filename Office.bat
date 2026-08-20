@@ -85,7 +85,7 @@ cls
 set "toInstall="
 for /L %%i in (1,1,%MAX_PROGS%) do (
     if "!OPT%%i!"=="%ON%" (
-        for %%V in (ITEM%%i) do for /f "tokens=2 delims=|" %%B in ("!%%V!") do set "toInstall=!toInstall!;%%B"
+        for %%V in (ITEM%%i) do set "toInstall=!toInstall!;!%%V!"
     )
 )
 
@@ -215,18 +215,18 @@ goto :eof
 :INIT_PROGRAMS
 set "MAX_PROGS=12"
 
-set "ITEM1=Word|Word"
-set "ITEM2=Excel|Excel"
-set "ITEM3=PowerPoint|PowerPoint"
-set "ITEM4=Outlook|Outlook"
-set "ITEM5=OneNote|OneNote"
-set "ITEM6=Publisher|Publisher"
-set "ITEM7=Access|Access"
-set "ITEM8=Visio|Visio"
-set "ITEM9=Project|Project"
-set "ITEM10=ProofingTools|Proofing Tools"
-set "ITEM11=Teams|Teams"
-set "ITEM12=OneDrive|OneDrive"
+set "ITEM1=Word"
+set "ITEM2=Excel"
+set "ITEM3=PowerPoint"
+set "ITEM4=Outlook"
+set "ITEM5=OneNote"
+set "ITEM6=Publisher"
+set "ITEM7=Access"
+set "ITEM8=Visio"
+set "ITEM9=Project"
+set "ITEM10=Proofing Tools"
+set "ITEM11=Teams"
+set "ITEM12=OneDrive"
 goto :eof
 
 :: Renders items in three columns, marking selected ones with *
@@ -239,10 +239,8 @@ for /L %%r in (1,1,%ROWS%) do (
         set "cell=                         "
         if !idx! leq !MAX_PROGS! (
             for %%V in (ITEM!idx!) do for %%W in (OPT!idx!) do (
-                for /f "tokens=1,2 delims=|" %%A in ("!%%V!") do (
-                    set "cell=  [!idx!] %%B"
-                    if "!%%W!"=="!ON!" set "cell=* [!idx!] %%B"
-                )
+                set "cell=  [!idx!] !%%V!"
+                if "!%%W!"=="!ON!" set "cell=* [!idx!] !%%V!"
             )
         )
         set "cell=!cell!                          "
