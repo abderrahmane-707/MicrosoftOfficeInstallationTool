@@ -57,7 +57,6 @@ echo.
 echo    [V] Version:      %VERSION_MSG%
 echo    [L] Language:     %LANG_MSG%
 echo    [M] Mode:         %MOD_MSG%
-echo    [I] Architecture: %ARCH_MSG%
 echo.
 echo              ---------------------------------------------------------------------------
 echo.
@@ -69,8 +68,8 @@ set "choice=" & set /p "choice=--> Select an option(s) and press [S] to Start: "
 
 if "%choice%"=="" goto OFFICE_MENU
 if "%choice%"=="0" exit /b
-if /i "%choice%"=="V" (call :TOGGLE_VERSION && goto OFFICE_MENU)
-if /i "%choice%"=="L" (call :TOGGLE_LANGUAGE && goto OFFICE_MENU)
+if /i "%choice%"=="V" (call :TOGGLE_VERSION & goto OFFICE_MENU)
+if /i "%choice%"=="L" (call :TOGGLE_LANGUAGE & goto OFFICE_MENU)
 if /i "%choice%"=="M" (call :TOGGLE_SINGLE & goto OFFICE_MENU)
 if /i "%choice%"=="A" (call :SELECT_ALL & goto OFFICE_MENU)
 if /i "%choice%"=="D" (call :DESELECT_ALL & goto OFFICE_MENU)
