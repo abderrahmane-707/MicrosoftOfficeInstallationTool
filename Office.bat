@@ -194,7 +194,7 @@ if "%PROCESSOR_ARCHITEW6432%"=="AMD64" (
 )
 
 :: Check for offline files
-if exist "Office\Data\stream*.dat" (
+if exist "Office\Data\*.cab" (
     set "OFILES=%ON%"
 ) else (
     set "OFILES=%OFF%"
