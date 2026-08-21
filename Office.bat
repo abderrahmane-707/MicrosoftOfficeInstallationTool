@@ -133,7 +133,7 @@ if errorlevel 1 (
 )
 
 call :CHOICE "Deleting Microsoft Office Installation Files?"
-if %errorlevel%==1 (
+if %errorlevel% equ 1 (
     rd /s /q "Office"
     if exist "Office" (
         echo [ERROR] Could not delete: %~dp0Office
@@ -158,11 +158,11 @@ echo. & echo Disabling Microsoft Office Telemetry
 reg add "HKLM\SOFTWARE\Microsoft\Office\Common\ClientTelemetry" /v "DisableTelemetry" /t REG_DWORD /d "00000001" /f >nul
 
 call :CHOICE "Do you want to activate Microsoft Office using (MAS)?"
-if errorlevel 2 goto (OFFICE_MENU & goto OFFICE_MENU)
+if %errorlevel% equ 1 (
+    echo. & echo The script will open in a new window. Follow the on-screen instructions
+    powershell -NoP -EP Bypass -c "irm https://get.activated.win | iex"
+)
 
-echo. & echo The script will open in a new window. Follow the on-screen instructions
-powershell -NoP -EP Bypass -c "irm https://get.activated.win | iex"
-call :GO & call :DESELECT_ALL & goto OFFICE_MENU
 echo. & echo The operation is done.
 pause & call :DESELECT_ALL & goto OFFICE_MENU
 
@@ -195,18 +195,17 @@ if "%PROCESSOR_ARCHITEW6432%"=="AMD64" (
     set "ARCH_MSG=64-bit (Auto-detected from 64-bit OS)"
 )
 
-:: Check for offline files
+:: Check for offline files and set default mode dynamically
 if exist "Office\Data\*.cab" (
     set "OFILES=%ON%"
+    set "OPTM=%OFF%"
 ) else (
     set "OFILES=%OFF%"
+    set "OPTM=%ON%"
 )
 
 :: Set default Office version
 set "OPTV=2021"
-
-:: Installation Mode: %ON%=Online, %OFF%=Offline
-set "OPTM=%ON%"
 
 :: Language: ar-sa, en-us, fr-fr
 set "OPTL=en-us"
