@@ -358,7 +358,7 @@ if "%NEEDMAIN%"=="%ON%" (
     ) else if "%OPTV%"=="2019" (
         echo      ^<Product ID="ProPlus2019Volume"^> >> "%CONFIG_FILE%"
     ) else if "%OPTV%"=="2016" (
-        echo      ^<Product ID="ProPlusRetail"^> >> "%CONFIG_FILE%"
+        echo      ^<Product ID="ProPlus2016Volume"^> >> "%CONFIG_FILE%"
     ) else if "%OPTV%"=="2021" (
         echo      ^<Product ID="ProPlus2021Volume"^> >> "%CONFIG_FILE%"
     )
