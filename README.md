@@ -4,16 +4,16 @@ A simple interactive command-line tool for installing Microsoft Office.
 
 ## Features
 
-- **Office Pack** — Word, Excel, PowerPoint, Outlook, OneNote, Publisher, Access, Visio, Project, Proofing Tools, Teams, OneDrive
+- **Office Pack** — Word, Excel, PowerPoint, Outlook, OneNote, Publisher, Access, Visio,
+  Project, Proofing Tools, Teams, OneDrive
 - **Version** — Office 365, 2021, 2019, 2016
 - **Language** — English (en-us) / Arabic (ar-sa)
 - **Installation mode**
   - Online Installation
   - Download Offline Files
   - Offline Installation (using previously downloaded files)
-- **Auto-detects** System architecture (32/64-bit, including ARM64)
-- **Activation** Activate the package using (MAS) script
 - **Privacy** Automatically disables Office Telemetry after installation
+- **Activation** Activate the package using (MAS) script
 
 ## Usage
 
