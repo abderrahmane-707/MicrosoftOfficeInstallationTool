@@ -448,6 +448,7 @@ if "%OPT10%"=="%ON%" (
 )
 
 echo    ^</Add^> >> "%CONFIG_FILE%"
+echo    ^<Updates Enabled="FALSE" /^> >> "%CONFIG_FILE%"
 echo    ^<Display Level="Full" AcceptEULA="TRUE" /^> >> "%CONFIG_FILE%"
 echo    ^<Property Name="ForceAppShutdown" Value="TRUE" /^> >> "%CONFIG_FILE%"
 echo    ^<AppSettings^> >> "%CONFIG_FILE%"
