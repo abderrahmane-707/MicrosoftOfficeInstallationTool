@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-mode con: cols=100 lines=30
+mode con: cols=100 lines=30 >nul 2>&1
 
 :: Go to script's directory
 cd /d "%~dp0"
@@ -8,7 +8,7 @@ cd /d "%~dp0"
 :: Check for ODT setup.exe
 if not exist "setup.exe" (
     echo [ERROR] setup.exe is missing
-    echo Please download the Office Deployment Tool and place setup.exe script directory
+    echo Please download the Office Deployment Tool and place setup.exe in the script directory
     pause & exit /b 1
 )
 
@@ -69,7 +69,7 @@ if "%choice%"=="" goto OFFICE_MENU
 if "%choice%"=="0" exit /b
 if /i "%choice%"=="V" (call :TOGGLE_VERSION & goto OFFICE_MENU)
 if /i "%choice%"=="L" (call :TOGGLE_LANGUAGE & goto OFFICE_MENU)
-if /i "%choice%"=="M" (call :TOGGLE_SINGLE & goto OFFICE_MENU)
+if /i "%choice%"=="M" (call :TOGGLE_MODE & goto OFFICE_MENU)
 if /i "%choice%"=="A" (call :SELECT_ALL & goto OFFICE_MENU)
 if /i "%choice%"=="D" (call :DESELECT_ALL & goto OFFICE_MENU)
 if /i "%choice%"=="S" goto CONTINUE
@@ -77,7 +77,6 @@ if /i "%choice%"=="S" goto CONTINUE
 call :MULTI_INPUT
 goto OFFICE_MENU
 
-:: Continue installation
 :CONTINUE
 cls
 :: Collect every selected program into a single list, then check the selection in one go
@@ -103,7 +102,7 @@ echo    Language: %LANG_MSG%
 echo    Installation Mode: %MOD_MSG%
 
 echo. & call :CHOICE "Do you want to start?"
-if errorlevel 2 (call :DESELECT_ALL & goto OFFICE_MENU)
+if errorlevel 2 (echo The operation was cancelled & pause & goto OFFICE_MENU)
 
 :: Process based on installation mode and offline files status
 if "%OPTM%,%OFILES%"=="%OFF%,%OFF%" goto DOWNLOAD_FILES
@@ -111,14 +110,13 @@ if "%OPTM%,%OFILES%"=="%ON%,%ON%" goto OFFLINE_INSTALL
 if "%OPTM%,%OFILES%"=="%ON%,%OFF%" goto ONLINE_INSTALL
 
 :DOWNLOAD_FILES
-echo Downloading Office files
+echo. & echo Downloading Microsoft Office files 
 call :CONFIG
-echo. & echo Downloading Microsoft Office %OPTV% %CPU%-bit
 "setup.exe" /download "%CONFIG_FILE%"
 if errorlevel 1 (
-    echo. & echo Download failed
+    echo. & echo [ERROR] Download failed
     call :DEL_CONFIG
-    pause & call :DESELECT_ALL & goto OFFICE_MENU
+    pause & goto OFFICE_MENU
 )
 goto END
 
@@ -127,35 +125,35 @@ echo. & echo Installing Microsoft Office (using previously downloaded files)
 call :CONFIG
 "setup.exe" /configure "%CONFIG_FILE%"
 if errorlevel 1 (
-    echo. & echo Installation failed
+    echo. & echo [ERROR] Installation failed
     call :DEL_CONFIG
-	pause & call :DESELECT_ALL & goto OFFICE_MENU
+    pause & goto OFFICE_MENU
 )
 
-call :CHOICE "Do you want to delete: %~dp0Office?"
+call :CHOICE "Deleting Microsoft Office Installation Files?"
 if %errorlevel%==1 (
-    rd /s /q "Office" >nul 2>&1
+    rd /s /q "Office"
     if exist "Office" (
-        echo Could not delete offline files
+        echo [ERROR] Could not delete: %~dp0Office
     )
 )
 goto END
 
 :ONLINE_INSTALL
+echo. & echo Downloading and Installing Microsoft Office
 call :CONFIG
-echo. & echo Installing Microsoft Office (Online)
 "setup.exe" /configure "%CONFIG_FILE%"
 if errorlevel 1 (
-    echo. & echo Installation failed
+    echo. & echo [ERROR] Installation failed
     call :DEL_CONFIG
-    pause & call :DESELECT_ALL & goto OFFICE_MENU
+    pause & goto OFFICE_MENU
 )
 goto END
 
 :END
 call :DEL_CONFIG
 echo. & echo Disabling Microsoft Office Telemetry
-reg add "HKLM\SOFTWARE\Microsoft\Office\Common\ClientTelemetry" /v "DisableTelemetry" /t REG_DWORD /d "00000001" /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Office\Common\ClientTelemetry" /v "DisableTelemetry" /t REG_DWORD /d "00000001" /f >nul
 
 call :CHOICE "Do you want to activate Microsoft Office using (MAS)?"
 if errorlevel 2 goto (OFFICE_MENU & goto OFFICE_MENU)
@@ -163,6 +161,8 @@ if errorlevel 2 goto (OFFICE_MENU & goto OFFICE_MENU)
 echo. & echo The script will open in a new window. Follow the on-screen instructions
 powershell -NoP -EP Bypass -c "irm https://get.activated.win | iex"
 call :GO & call :DESELECT_ALL & goto OFFICE_MENU
+echo. & echo The operation is done.
+pause & call :DESELECT_ALL & goto OFFICE_MENU
 
 :INIT
 :: Set configuration file path
@@ -299,7 +299,7 @@ if defined invalid (
 )
 goto :eof
 
-:TOGGLE_SINGLE
+:TOGGLE_MODE
 if "!OPTM!"=="%ON%" (set "OPTM=%OFF%") else (set "OPTM=%ON%")
 goto :eof
 
@@ -440,8 +440,8 @@ echo    ^</AppSettings^> >> "%CONFIG_FILE%"
 echo ^</Configuration^> >> "%CONFIG_FILE%"
 
 if not exist "%CONFIG_FILE%" (
-    echo Failed to create configuration file!
-    exit /b 1
+    echo [ERROR] Failed to create configuration file!
+	pause & goto OFFICE_MENU
 )
 goto :eof
 
@@ -452,7 +452,3 @@ goto :eof
 :CHOICE
 choice /C YN /N /M "%~1 [Y/n]: "
 goto :eof
-
-:GO
-echo. & echo The operation is done.
-pause & goto :eof
