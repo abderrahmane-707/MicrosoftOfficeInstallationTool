@@ -167,6 +167,10 @@ powershell -NoP -EP Bypass -c "irm https://get.activated.win | iex"
 call :GO & call :DESELECT_ALL & goto OFFICE_MENU
 
 :INIT
+:: Set configuration file path
+set "CONFIG_FILE=%TEMP%\OfficeConfig.xml"
+
+:: Delete the old configuration file if exists
 call :DEL_CONFIG
 
 :: Define basic variables
@@ -206,9 +210,6 @@ set "OPTM=%ON%"
 
 :: Language: ar-sa, en-us
 set "OPTL=en-us"
-
-:: Set configuration file path
-set "CONFIG_FILE=configuration.xml"
 
 goto :eof
 
