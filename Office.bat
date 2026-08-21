@@ -90,7 +90,7 @@ for /L %%i in (1,1,%MAX_PROGS%) do (
 )
 
 if not defined toInstall (
-    echo No programs were selected
+    echo No programs selected
     pause & goto OFFICE_MENU
 )
 
@@ -103,7 +103,7 @@ echo    Installation Version: %OPTV%
 echo    Language: %LANG_MSG%
 echo    Installation Mode: %MOD_MSG%
 
-echo. & call :CHOICE "Do you want to start?"
+echo. & call :CHOICE "Do you want to continue?"
 if errorlevel 2 (echo The operation was cancelled & pause & goto OFFICE_MENU)
 
 if "%OPTM%"=="%ON%" goto ONLINE_INSTALL
@@ -301,7 +301,7 @@ if defined invalid (
 goto :eof
 
 :TOGGLE_MODE
-if "!OPTM!"=="%ON%" (set "OPTM=%OFF%") else (set "OPTM=%ON%")
+if "%OPTM%"=="%ON%" (set "OPTM=%OFF%") else (set "OPTM=%ON%")
 goto :eof
 
 :SELECT_ALL
