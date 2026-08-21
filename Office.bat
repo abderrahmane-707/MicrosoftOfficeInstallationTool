@@ -37,18 +37,20 @@ echo.
 
 :: Set Office version message
 if "%OPTV%"=="365" set "VERSION_MSG=Office 365"
+if "%OPTV%"=="2024" set "VERSION_MSG=Office 2024 (LTSC)"
 if "%OPTV%"=="2021" set "VERSION_MSG=Office 2021"
 if "%OPTV%"=="2019" set "VERSION_MSG=Office 2019"
 if "%OPTV%"=="2016" set "VERSION_MSG=Office 2016"
 
 :: Set installation mode message
-if "%OPTM%,%OFILES%"=="%ON%,%OFF%" set "MOD_MSG=Online Installation"
+if "%OPTM%"=="%ON%" set "MOD_MSG=Online Installation"
 if "%OPTM%,%OFILES%"=="%OFF%,%OFF%" set "MOD_MSG=Download Offline Files"
-if "%OPTM%,%OFILES%"=="%ON%,%ON%" set "MOD_MSG=Offline Installation"
+if "%OPTM%,%OFILES%"=="%OFF%,%ON%" set "MOD_MSG=Offline Installation"
 
 :: Set language message
 if "%OPTL%"=="ar-sa" set "LANG_MSG=ar-sa"
 if "%OPTL%"=="en-us" set "LANG_MSG=en-us"
+if "%OPTL%"=="fr-fr" set "LANG_MSG=fr-fr"
 
 call :RENDER_COLUMNS
 
@@ -104,10 +106,10 @@ echo    Installation Mode: %MOD_MSG%
 echo. & call :CHOICE "Do you want to start?"
 if errorlevel 2 (echo The operation was cancelled & pause & goto OFFICE_MENU)
 
-:: Process based on installation mode and offline files status
+if "%OPTM%"=="%ON%" goto ONLINE_INSTALL
 if "%OPTM%,%OFILES%"=="%OFF%,%OFF%" goto DOWNLOAD_FILES
-if "%OPTM%,%OFILES%"=="%ON%,%ON%" goto OFFLINE_INSTALL
-if "%OPTM%,%OFILES%"=="%ON%,%OFF%" goto ONLINE_INSTALL
+if "%OPTM%,%OFILES%"=="%OFF%,%ON%" goto OFFLINE_INSTALL
+exit /b
 
 :DOWNLOAD_FILES
 echo. & echo Downloading Microsoft Office files 
@@ -206,7 +208,7 @@ set "OPTV=2021"
 :: Installation Mode: %ON%=Online, %OFF%=Offline
 set "OPTM=%ON%"
 
-:: Language: ar-sa, en-us
+:: Language: ar-sa, en-us, fr-fr
 set "OPTL=en-us"
 
 goto :eof
@@ -312,11 +314,11 @@ for /L %%i in (1,1,%MAX_PROGS%) do set "OPT%%i=%OFF%"
 goto :eof
 
 :TOGGLE_VERSION
-if "%OPTV%"=="365" (set "OPTV=2021") else if "%OPTV%"=="2021" (set "OPTV=2019") else if "%OPTV%"=="2019" (set "OPTV=2016") else (set "OPTV=365")
+if "%OPTV%"=="365" (set "OPTV=2024") else if "%OPTV%"=="2024" (set "OPTV=2021") else if "%OPTV%"=="2021" (set "OPTV=2019") else if "%OPTV%"=="2019" (set "OPTV=2016") else (set "OPTV=365")
 goto :eof
 
 :TOGGLE_LANGUAGE
-if "%OPTL%"=="ar-sa" (set "OPTL=en-us") else (set "OPTL=ar-sa")
+if "%OPTL%"=="ar-sa" (set "OPTL=en-us") else if "%OPTL%"=="en-us" (set "OPTL=fr-fr") else (set "OPTL=ar-sa")
 goto :eof
 
 :CONFIG
@@ -328,6 +330,8 @@ echo ^<Configuration^> >> "%CONFIG_FILE%"
 
 if "%OPTV%"=="365" (
     echo    ^<Add OfficeClientEdition="%CPU%" Channel="Current" MigrateArch="TRUE"^> >> "%CONFIG_FILE%"
+) else if "%OPTV%"=="2024" (
+    echo    ^<Add OfficeClientEdition="%CPU%" Channel="PerpetualVL2024" MigrateArch="TRUE"^> >> "%CONFIG_FILE%"
 ) else if "%OPTV%"=="2019" (
     echo    ^<Add OfficeClientEdition="%CPU%" Channel="PerpetualVL2019" MigrateArch="TRUE"^> >> "%CONFIG_FILE%"
 ) else if "%OPTV%"=="2016" (
@@ -350,6 +354,8 @@ if "%OPT12%"=="%ON%" set "NEEDMAIN=%ON%"
 if "%NEEDMAIN%"=="%ON%" (
     if "%OPTV%"=="365" (
         echo      ^<Product ID="O365ProPlusRetail"^> >> "%CONFIG_FILE%"
+    ) else if "%OPTV%"=="2024" (
+        echo      ^<Product ID="ProPlus2024Volume"^> >> "%CONFIG_FILE%"
     ) else if "%OPTV%"=="2019" (
         echo      ^<Product ID="ProPlus2019Volume"^> >> "%CONFIG_FILE%"
     ) else if "%OPTV%"=="2016" (
@@ -362,6 +368,8 @@ if "%NEEDMAIN%"=="%ON%" (
         echo        ^<Language ID="ar-sa" /^> >> "%CONFIG_FILE%"
     ) else if "%OPTL%"=="en-us" (
         echo        ^<Language ID="en-us" /^> >> "%CONFIG_FILE%"
+    ) else if "%OPTL%"=="fr-fr" (
+        echo        ^<Language ID="fr-fr" /^> >> "%CONFIG_FILE%"
     )
 
     echo        ^<ExcludeApp ID="Lync" /^> >> "%CONFIG_FILE%"
@@ -384,6 +392,8 @@ if "%NEEDMAIN%"=="%ON%" (
 if "%OPT8%"=="%ON%" (
     if "%OPTV%"=="365" (
         echo      ^<Product ID="VisioProRetail"^> >> "%CONFIG_FILE%"
+    ) else if "%OPTV%"=="2024" (
+        echo      ^<Product ID="VisioPro2024Volume"^> >> "%CONFIG_FILE%"
     ) else if "%OPTV%"=="2019" (
         echo      ^<Product ID="VisioPro2019Volume"^> >> "%CONFIG_FILE%"
     ) else if "%OPTV%"=="2016" (
@@ -395,6 +405,8 @@ if "%OPT8%"=="%ON%" (
         echo        ^<Language ID="ar-sa" /^> >> "%CONFIG_FILE%"
     ) else if "%OPTL%"=="en-us" (
         echo        ^<Language ID="en-us" /^> >> "%CONFIG_FILE%"
+    ) else if "%OPTL%"=="fr-fr" (
+        echo        ^<Language ID="fr-fr" /^> >> "%CONFIG_FILE%"
     )
     echo        ^<ExcludeApp ID="Bing" /^> >> "%CONFIG_FILE%"
     echo      ^</Product^> >> "%CONFIG_FILE%"
@@ -403,6 +415,8 @@ if "%OPT8%"=="%ON%" (
 if "%OPT9%"=="%ON%" (
     if "%OPTV%"=="365" (
         echo      ^<Product ID="ProjectProRetail"^> >> "%CONFIG_FILE%"
+    ) else if "%OPTV%"=="2024" (
+        echo      ^<Product ID="ProjectPro2024Volume"^> >> "%CONFIG_FILE%"
     ) else if "%OPTV%"=="2019" (
         echo      ^<Product ID="ProjectPro2019Volume"^> >> "%CONFIG_FILE%"
     ) else if "%OPTV%"=="2016" (
@@ -414,6 +428,8 @@ if "%OPT9%"=="%ON%" (
         echo        ^<Language ID="ar-sa" /^> >> "%CONFIG_FILE%"
     ) else if "%OPTL%"=="en-us" (
         echo        ^<Language ID="en-us" /^> >> "%CONFIG_FILE%"
+    ) else if "%OPTL%"=="fr-fr" (
+        echo        ^<Language ID="fr-fr" /^> >> "%CONFIG_FILE%"
     )
     echo        ^<ExcludeApp ID="Bing" /^> >> "%CONFIG_FILE%"
     echo      ^</Product^> >> "%CONFIG_FILE%"
@@ -425,6 +441,8 @@ if "%OPT10%"=="%ON%" (
         echo        ^<Language ID="ar-sa" /^> >> "%CONFIG_FILE%"
     ) else if "%OPTL%"=="en-us" (
         echo        ^<Language ID="en-us" /^> >> "%CONFIG_FILE%"
+    ) else if "%OPTL%"=="fr-fr" (
+        echo        ^<Language ID="fr-fr" /^> >> "%CONFIG_FILE%"
     )
     echo        ^<ExcludeApp ID="Bing" /^> >> "%CONFIG_FILE%"
     echo      ^</Product^> >> "%CONFIG_FILE%"
