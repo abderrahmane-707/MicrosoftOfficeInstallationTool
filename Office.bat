@@ -44,7 +44,6 @@ if "%OPTV%"=="2016" set "VERSION_MSG=Office 2016"
 :: Set installation mode message
 if "%OPTM%,%OFILES%"=="%ON%,%OFF%" set "MOD_MSG=Online Installation"
 if "%OPTM%,%OFILES%"=="%OFF%,%OFF%" set "MOD_MSG=Download Offline Files"
-if "%OPTM%,%OFILES%"=="%OFF%,%ON%" set "MOD_MSG=Delete Offline Files"
 if "%OPTM%,%OFILES%"=="%ON%,%ON%" set "MOD_MSG=Offline Installation"
 
 :: Set language message
@@ -108,7 +107,6 @@ if errorlevel 2 (call :DESELECT_ALL & goto OFFICE_MENU)
 
 :: Process based on installation mode and offline files status
 if "%OPTM%,%OFILES%"=="%OFF%,%OFF%" goto DOWNLOAD_FILES
-if "%OPTM%,%OFILES%"=="%OFF%,%ON%" goto DELETE_FILES
 if "%OPTM%,%OFILES%"=="%ON%,%ON%" goto OFFLINE_INSTALL
 if "%OPTM%,%OFILES%"=="%ON%,%OFF%" goto ONLINE_INSTALL
 
@@ -124,22 +122,22 @@ if errorlevel 1 (
 )
 goto END
 
-:DELETE_FILES
-echo. & echo Deleting Microsoft Office Installation Files
-rd /s /q "Office" >nul 2>&1
-if exist "Office" (
-    echo Could not delete offline files
-)
-pause & call :DESELECT_ALL & goto OFFICE_MENU
-
 :OFFLINE_INSTALL
-echo. & echo Installing Microsoft Office (offline)
+echo. & echo Installing Microsoft Office (using previously downloaded files)
 call :CONFIG
 "setup.exe" /configure "%CONFIG_FILE%"
 if errorlevel 1 (
     echo. & echo Installation failed
     call :DEL_CONFIG
 	pause & call :DESELECT_ALL & goto OFFICE_MENU
+)
+
+call :CHOICE "Do you want to delete: %~dp0Office?"
+if %errorlevel%==1 (
+    rd /s /q "Office" >nul 2>&1
+    if exist "Office" (
+        echo Could not delete offline files
+    )
 )
 goto END
 
