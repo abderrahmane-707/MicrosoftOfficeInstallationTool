@@ -80,7 +80,6 @@ call :MULTI_INPUT
 goto OFFICE_MENU
 
 :CONTINUE
-cls
 :: Collect every selected program into a single list, then check the selection in one go
 set "toInstall="
 for /L %%i in (1,1,%MAX_PROGS%) do (
@@ -90,11 +89,11 @@ for /L %%i in (1,1,%MAX_PROGS%) do (
 )
 
 if not defined toInstall (
-    echo No programs selected
+    echo. & echo No programs selected
     pause & goto OFFICE_MENU
 )
 
-echo Installing the following programs:
+cls & echo Selected programs:
 for %%P in (!toInstall!) do echo     - %%P
 
 echo.
@@ -104,7 +103,10 @@ echo    Language: %LANG_MSG%
 echo    Installation Mode: %MOD_MSG%
 
 echo. & call :CHOICE "Do you want to continue?"
-if errorlevel 2 (echo The operation was cancelled & pause & goto OFFICE_MENU)
+if errorlevel 2 (
+    echo. & echo The operation was cancelled
+	pause & goto OFFICE_MENU
+)
 
 if "%OPTM%"=="%ON%" goto ONLINE_INSTALL
 if "%OPTM%,%OFILES%"=="%OFF%,%OFF%" goto DOWNLOAD_FILES
@@ -116,7 +118,7 @@ echo. & echo Downloading Microsoft Office files
 call :CONFIG
 "setup.exe" /download "%CONFIG_FILE%"
 if errorlevel 1 (
-    echo. & echo [ERROR] Download failed
+    echo. & echo [ERROR] Downloading Microsoft Office files was failed
     call :DEL_CONFIG
     pause & goto OFFICE_MENU
 )
@@ -127,16 +129,16 @@ echo. & echo Installing Microsoft Office (using previously downloaded files)
 call :CONFIG
 "setup.exe" /configure "%CONFIG_FILE%"
 if errorlevel 1 (
-    echo. & echo [ERROR] Installation failed
+    echo. & echo [ERROR] Installing Microsoft Office (using previously downloaded files) was failed
     call :DEL_CONFIG
     pause & goto OFFICE_MENU
 )
 
-call :CHOICE "Deleting Microsoft Office Installation Files?"
+echo. & call :CHOICE "Deleting Microsoft Office Installation Files?"
 if %errorlevel% equ 1 (
     rd /s /q "Office"
     if exist "Office" (
-        echo [ERROR] Could not delete: %~dp0Office
+        echo [ERROR] Could not delete Microsoft Office Installation Files: %~dp0Office
     )
 )
 goto END
@@ -146,23 +148,23 @@ echo. & echo Downloading and Installing Microsoft Office
 call :CONFIG
 "setup.exe" /configure "%CONFIG_FILE%"
 if errorlevel 1 (
-    echo. & echo [ERROR] Installation failed
+    echo. & echo [ERROR] Downloading and Installing Microsoft Office was failed
     call :DEL_CONFIG
     pause & goto OFFICE_MENU
 )
 goto END
 
 :END
-call :DEL_CONFIG
-echo. & echo Disabling Microsoft Office Telemetry
+echo Disabling Microsoft Office Telemetry
 reg add "HKLM\SOFTWARE\Microsoft\Office\Common\ClientTelemetry" /v "DisableTelemetry" /t REG_DWORD /d "00000001" /f >nul
 
-call :CHOICE "Do you want to activate Microsoft Office using (MAS)?"
+echo. & call :CHOICE "Do you want to activate Microsoft Office using (MAS)?"
 if %errorlevel% equ 1 (
-    echo. & echo The script will open in a new window. Follow the on-screen instructions
+    echo The script will open in a new window. Follow the on-screen instructions
     powershell -NoP -EP Bypass -c "irm https://get.activated.win | iex"
 )
 
+call :DEL_CONFIG
 echo. & echo The operation is done.
 pause & call :DESELECT_ALL & goto OFFICE_MENU
 
@@ -321,7 +323,7 @@ if "%OPTL%"=="ar-sa" (set "OPTL=en-us") else if "%OPTL%"=="en-us" (set "OPTL=fr-
 goto :eof
 
 :CONFIG
-echo. & echo Creating Configuration File for Microsoft Office %OPTV%
+echo Creating Configuration File for Microsoft Office %OPTV%
 call :DEL_CONFIG
 
 echo ^<?xml version="1.0" encoding="utf-8"?^> > "%CONFIG_FILE%"
@@ -458,7 +460,7 @@ echo    ^</AppSettings^> >> "%CONFIG_FILE%"
 echo ^</Configuration^> >> "%CONFIG_FILE%"
 
 if not exist "%CONFIG_FILE%" (
-    echo [ERROR] Failed to create configuration file!
+    echo. & echo [ERROR] Failed to create configuration file!
 	pause & goto OFFICE_MENU
 )
 goto :eof
